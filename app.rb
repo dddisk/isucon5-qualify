@@ -169,7 +169,7 @@ SQL
 
     profile = db.xquery('SELECT * FROM profiles WHERE user_id = ?', current_user[:id]).first
     friends_query = 'SELECT * FROM relations WHERE one = ? ORDER BY created_at DESC'
-    
+
     friends_map = {}
 
     db.xquery(friends_query, current_user[:id]).each do |rel|
@@ -193,17 +193,14 @@ SQL
     comments_for_me = db.xquery(comments_for_me_query, current_user[:id])
 
     entries_of_friends = []
-    db.query('SELECT * FROM entries ORDER BY created_at DESC LIMIT 1000').each do |entry|
-      next unless friends_map.key?(entry[:user_id])
+    db.xquery('SELECT * FROM entries WHERE user_id IN (?) ORDER BY created_at DESC LIMIT 10', friends_map.keys).each do |entry|
       entry[:title] = entry[:body].split(/\n/).first
       entries_of_friends << entry
-      break if entries_of_friends.size >= 10
     end
 
     comments_of_friends = []
     comment_ids = []
-    db.query('SELECT id, entry_id, user_id FROM comments ORDER BY created_at DESC LIMIT 1000').each do |comment|
-      next unless friends_map.key?(comment[:user_id])
+    db.query('SELECT id, entry_id, user_id FROM comments ORDER BY created_at DESC LIMIT 10', friends_map).each do |comment|
       entry = db.xquery('SELECT * FROM entries WHERE id = ?', comment[:entry_id]).first
       entry[:is_private] = (entry[:private] == 1)
       next if entry[:is_private] && !permitted?(entry[:user_id])
